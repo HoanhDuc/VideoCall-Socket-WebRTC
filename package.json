@@ -27,10 +27,9 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
     "wp-frontend" : "react-scripts start",
     "wp-server": "nodemon server.js",
-    "dev" : "concurrently --kill-others \"npm run wp-frontend\" \"npm run wp-server\"",
+    "start" : "concurrently --kill-others \"npm run wp-frontend\" \"npm run wp-server\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
