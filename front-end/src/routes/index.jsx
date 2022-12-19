@@ -11,10 +11,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { setSocket } from "../store/socket";
 
 export default function AppRouter() {
-  const socket = React.useMemo(() => {
-    console.log(12123);
-    return io.connect("https://video-call-socket-web-rtc-px2i.vercel.app/");
-  }, []);
+  const socket = io.connect("https://server-socketio.vercel.app/");
   const dispatch = useDispatch();
   React.useEffect(() => {
     dispatch(setSocket(socket));
