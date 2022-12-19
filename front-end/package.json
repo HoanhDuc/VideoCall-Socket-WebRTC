@@ -27,7 +27,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start & nodemon server.js",
+    "start": "react-scripts start",
     "wp-server": "cd server && npm install && npm run start",
     "build": "react-scripts build",
     "test": "react-scripts test",
