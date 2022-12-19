@@ -4,7 +4,7 @@ const app = express();
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: ["http://localhost:3000", "yoursite.herokuapp.com"],
+    origin: ["http://localhost:3000", "https://video-call-socket-web-rtc.vercel.app"],
     methods: ["GET"],
   },
 });
