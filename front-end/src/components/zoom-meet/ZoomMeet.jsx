@@ -23,6 +23,14 @@ const videoConstraints = {
 };
 
 // const socket = io.connect("http://localhost:5000");
+const connectionOptions = {
+  "force new connection": true,
+  reconnectionAttempts: "Infinity",
+  timeout: 10000,
+  transports: ["websocket"],
+};
+const socket = io.connect("http://localhost:5000", connectionOptions);
+
 function App() {
   const [me, setMe] = useState("");
   const [stream, setStream] = useState();
@@ -40,7 +48,7 @@ function App() {
   const userVideo = useRef();
   const connectionRef = useRef();
   const user = useSelector((state) => state.auth.user);
-  const socket = useSelector((state) => state.socket.socket);
+  // const socket = useSelector((state) => state.socket.socket);
 
   // useEffect(() => {
   //   return () => {
@@ -70,6 +78,7 @@ function App() {
       }
 
       socket.on("me", (id) => {
+        console.log('socket semd');
         setMe(id);
       });
       socket.on("callUser", (data) => {

@@ -11,10 +11,16 @@ import { useSelector, useDispatch } from "react-redux";
 import { setSocket } from "../store/socket";
 
 export default function AppRouter() {
-  const socket = io.connect("https://server-socketio.vercel.app/");
+  // const connectionOptions = {
+  //   "force new connection": true,
+  //   reconnectionAttempts: "Infinity",
+  //   timeout: 10000,
+  //   transports: ["websocket"],
+  // };
+  // const socket = io.connect("https://server-socketio.vercel.app/", connectionOptions);
   const dispatch = useDispatch();
   React.useEffect(() => {
-    dispatch(setSocket(socket));
+    // dispatch(setSocket(socket));
     checkAuth();
   }, []);
   return (
