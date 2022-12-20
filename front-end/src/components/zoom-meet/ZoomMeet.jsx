@@ -29,7 +29,7 @@ const connectionOptions = {
   timeout: 10000,
   transports: ["websocket"],
 };
-const socket = io.connect("http://localhost:5000", connectionOptions);
+const socket = io.connect("https://server-socketio.vercel.app/", connectionOptions);
 
 function App() {
   const [me, setMe] = useState("");
