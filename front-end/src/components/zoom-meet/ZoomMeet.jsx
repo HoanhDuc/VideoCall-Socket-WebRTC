@@ -6,6 +6,7 @@ import { Slide, Avatar, OutlinedInput, Button } from "@material-ui/core";
 import CallIcon from "@mui/icons-material/Call";
 import CallEndIcon from "@mui/icons-material/CallEnd";
 import styled from "styled-components";
+import UserItem from "../user-controller/UserItem";
 import { useSelector } from "react-redux";
 
 const AlertStyle = styled.div`
@@ -22,32 +23,25 @@ const videoConstraints = {
   facingMode: "user",
 };
 
-// const socket = io.connect("http://localhost:5000");
-const connectionOptions = {
-  "force new connection": true,
-  reconnectionAttempts: "Infinity",
-  timeout: 10000,
-  transports: ["websocket"],
-};
-const socket = io.connect("https://server-socketio.vercel.app/", connectionOptions);
+const socket = io.connect("http://localhost:5000");
+// const socket = io.connect("https://server-socketio.vercel.app/");
 
 function App() {
   const [me, setMe] = useState("");
   const [stream, setStream] = useState();
-  // const [mediaStream, setMediaStream] = useState();
   const [receivingCall, setReceivingCall] = useState(false);
   const [caller, setCaller] = useState("");
   const [callerSignal, setCallerSignal] = useState();
   const [callAccepted, setCallAccepted] = useState(false);
-  const [idToCall, setIdToCall] = useState("");
+  const [parnerId, setParnerId] = useState("");
   const [callEnded, setCallEnded] = useState(false);
   const [callerInfo, setCallerInfo] = useState({});
-  const [partnerSignal, setPartnerSignal] = useState();
+  const [listOnline, setListOnline] = useState([]);
   const myVideo = useRef();
-  const screenShare = useRef();
   const userVideo = useRef();
   const connectionRef = useRef();
   const user = useSelector((state) => state.auth.user);
+  // const [mediaStream, setMediaStream] = useState();
   // const socket = useSelector((state) => state.socket.socket);
 
   // useEffect(() => {
@@ -65,28 +59,62 @@ function App() {
       myVideo.current.srcObject = stream;
     }
   }, [stream]);
+
+  useEffect(() => {
+    socket.emit('sendSocketId')
+    socket.on("me", (id) => {
+      setMe(id);
+    });
+
+    if (user.name && user.avatar) {
+      socket.emit("sendMineInfo", {
+        user: {
+          ...user,
+          socketId: socket.id,
+        },
+      });
+
+      socket.on("usersOnline", (userOnline) => {
+        if (userOnline.socketId !== socket.id) {
+          setListOnline([...listOnline, userOnline]);
+        }
+      });
+
+      socket.on("newConnection", (newUser) => {
+        if (newUser.socketId !== socket.id) {
+          setListOnline([...listOnline, newUser]);
+          socket.emit("imOnline", {
+            user: {
+              ...user,
+              socketId: socket.id,
+            },
+          });
+        }
+      });
+    }
+  }, [user, setListOnline]);
+
   useEffect(() => {
     if (socket) {
       try {
         navigator.mediaDevices
           .getUserMedia({ video: true, audio: true })
           .then((stream) => {
+            console.log(stream);
             setStream(stream);
+            window.localAudio.srcObject = stream;
           });
       } catch (ex) {
-        console.log("Error occurred", ex);
+        console.log("Your camera is disconnected");
       }
 
-      socket.on("me", (id) => {
-        console.log('socket semd');
-        setMe(id);
-      });
       socket.on("callUser", (data) => {
         setReceivingCall(true);
         setCaller(data.from);
         setCallerInfo(data.user);
         setCallerSignal(data.signal);
       });
+
       socket.on("endCall", () => {
         setCallEnded(true);
         setCallAccepted(false);
@@ -104,19 +132,19 @@ function App() {
       socket.on("shareScreen", (data) => {
         peer.signal(data.signal);
       });
-      peer.on("stream",  (stream) => {
-        console.log(111,stream);
+      peer.on("stream", (stream) => {
         document.getElementById("local-video").srcObject = stream;
       });
     }
   }, [socket]);
 
-  const callUser = async (id, streamSrc = stream) => {
+  const callUser = async (id) => {
     const peer = new Peer({
       initiator: true,
       trickle: false,
-      stream: streamSrc,
+      stream: stream,
     });
+
     peer.on("signal", (data) => {
       socket.emit("callUser", {
         userToCall: id,
@@ -131,11 +159,11 @@ function App() {
     peer.on("stream", (stream) => {
       userVideo.current.srcObject = stream;
     });
-    socket.on("callAccepted", ({ signal, answer }) => {
+    socket.on("callAccepted", ({ signal }) => {
+      setParnerId(id);
       setReceivingCall(true);
       setCallEnded(false);
       setCallAccepted(true);
-      setPartnerSignal(answer);
       peer.signal(signal);
     });
     connectionRef.current = peer;
@@ -156,7 +184,7 @@ function App() {
     });
 
     peer.signal(callerSignal);
-    setPartnerSignal(caller);
+    setParnerId(caller);
     setCallEnded(false);
     setCallAccepted(true);
     connectionRef.current = peer;
@@ -166,7 +194,7 @@ function App() {
     setCallEnded(true);
     setCallAccepted(false);
     setReceivingCall(false);
-    socket.emit("endCall", partnerSignal);
+    socket.emit("endCall", parnerId);
     connectionRef.current.destroy();
   };
   const cancelCall = () => {
@@ -180,7 +208,7 @@ function App() {
       const mediaStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
       });
-   
+
       const peer = new Peer({
         initiator: true,
         trickle: false,
@@ -188,7 +216,7 @@ function App() {
       });
       peer.on("signal", (data) => {
         socket.emit("shareScreen", {
-          userToCall: idToCall,
+          userToCall: parnerId,
           from: me,
           signal: data,
         });
@@ -203,6 +231,11 @@ function App() {
   return (
     <>
       <div className="">
+        <div className="absolute flex flex-col gap-3">
+          {listOnline.map((item) => (
+            <UserItem user={item} onCall={callUser} />
+          ))}
+        </div>
         <div className="mt-5 flex items-end justify-center">
           <video
             id="local-video"
@@ -213,7 +246,6 @@ function App() {
           />
           <div className="video">
             {stream && (
-              <div>
                 <Webcam
                   className="rounded overflow-hidden mx-auto mb-5"
                   audio={false}
@@ -222,14 +254,6 @@ function App() {
                   ref={myVideo}
                   videoConstraints={videoConstraints}
                 />
-                {/* <video
-                  className="rounded overflow-hidden mx-auto mb-5"
-                  width={300}
-                  autoPlay
-                  ref={myVideo}
-                  muted
-                /> */}
-              </div>
             )}
             {callAccepted && !callEnded ? (
               <video
@@ -242,16 +266,9 @@ function App() {
             ) : null}
           </div>
         </div>
-        {me}
         <div className="mt-5">
-          <OutlinedInput
-            placeholder="Please enter text"
-            className="bg-white rounded w-1/4"
-            value={idToCall}
-            onChange={(e) => setIdToCall(e.target.value)}
-          />
           <div className="call-button mt-2">
-            {callAccepted && !callEnded ? (
+            {callAccepted && !callEnded && (
               <div className="flex gap-3 justify-center">
                 <Button
                   variant="contained"
@@ -267,21 +284,10 @@ function App() {
                 >
                   Share Screen
                 </Button>
-                <Button
-                  variant="contained"
-                  color="inherit"
-                >
+                <Button variant="contained" color="inherit">
                   On Screen Sharing
                 </Button>
               </div>
-            ) : (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => callUser(idToCall)}
-              >
-                Call
-              </Button>
             )}
           </div>
         </div>
